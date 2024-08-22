@@ -5,15 +5,14 @@ import CreateReactScript from './Utils/CreateReactScript'
 import AuthRest from './actions/AuthRest'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { Link } from '@inertiajs/react'
-import SelectFormGroup from './Components/form/SelectFormGroup'
-import Modal from './Components/Modal'
+import SelectFormGroup from './components/form/SelectFormGroup'
+import Modal from './components/Modal'
 import HtmlContent from './Utils/HtmlContent'
 import Swal from 'sweetalert2'
-import logo from './Svg/logo.svg'
 
-const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos y condiciones', roles = [], specialties }) => {
+const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos y condiciones' }) => {
 
-  document.title = 'Registro | NetCoaching'
+  document.title = 'Registro | Atalaya'
 
   const jsEncrypt = new JSEncrypt()
   jsEncrypt.setPublicKey(PUBLIC_RSA_KEY)
@@ -23,16 +22,14 @@ const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos
   const [captchaValue, setCaptchaValue] = useState(null)
   const [found, setFound] = useState(false)
 
-  // const documentTypeRef = useRef()
-  // const documentNumberRef = useRef()
-  const roleRef = useRef()
+  const documentTypeRef = useRef()
+  const documentNumberRef = useRef()
   const nameRef = useRef()
   const lastnameRef = useRef()
   const emailRef = useRef()
   const passwordRef = useRef()
   const confirmationRef = useRef()
   const termsRef = useRef()
-  const specialtyRef = useRef()
 
   const termsModalRef = useRef();
 
@@ -72,9 +69,8 @@ const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos
     // })
 
     const request = {
-      role: $(roleRef.current).val(),
-      // document_type: $(documentTypeRef.current).val(),
-      // document_number: documentNumberRef.current.value,
+      document_type: $(documentTypeRef.current).val(),
+      document_number: documentNumberRef.current.value,
       name: nameRef.current.value,
       lastname: lastnameRef.current.value,
       email: emailRef.current.value,
@@ -82,7 +78,7 @@ const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos
       confirmation: jsEncrypt.encrypt(confirmation),
       terms: termsRef.current.checked,
       captcha: captchaValue,
-      // _token: token
+      _token: token
     }
     const result = await AuthRest.signup(request)
     if (!result) return setLoading(false)
@@ -103,9 +99,9 @@ const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos
           <div className="col-md-8 col-lg-6 col-xl-4">
             <div className="text-center">
               <a href="/">
-                <img src={logo} alt="" className="mx-auto" style={{ height: '40px' }} />
+                <img src="/assets/img/logo-dark.svg" alt="" height="22" className="mx-auto" style={{ height: '22px' }} />
               </a>
-              <p className="text-muted mt-2 mb-4">Bienvenido a Net Coaching</p>
+              <p className="text-muted mt-2 mb-4">Atalaya by Mundo Web</p>
             </div>
             <div className="card">
               <div className="card-body p-4">
@@ -113,34 +109,18 @@ const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos
                   <h4 className="text-uppercase mt-0 font-bold">Registrate</h4>
                 </div>
                 <form onSubmit={onRegisterSubmit} className='row'>
-                  <div className="col-12">
-                    <div className="row justify-content-center">
-                      <div className="col-sm-6 mb-2">
-                        <label htmlFor="role" className="form-label">Tipo de usuario <b className="text-danger">*</b></label>
-                        <SelectFormGroup eRef={roleRef} onChange={onDocumentTypeChange} required>
-                          {
-                            roles.map((role, i) => {
-                              return <option value={role.relative_id}>{role.name}</option>
-                            })
-                          }
-                        </SelectFormGroup>
-                      </div>
-                    </div>
+                  <div className="col-sm-6 mb-2">
+                    <label htmlFor="document_type" className="form-label">Tipo documento <b className="text-danger">*</b></label>
+                    <SelectFormGroup eRef={documentTypeRef} onChange={onDocumentTypeChange} required>
+                      <option value="DNI">DNI - Documento Nacional de Identidad</option>
+                      <option value="CE">CE - Carnet de Extranjeria</option>
+                    </SelectFormGroup>
                   </div>
-                  {/* <div className="col-sm-6 mb-2">
+                  <div className="col-sm-6 mb-2">
                     <label htmlFor="document_number" className="form-label">Numero documento <b className="text-danger">*</b></label>
                     <input ref={documentNumberRef} className="form-control" type="text" id="document_number" placeholder="Ingrese su documento"
                       required />
-                  </div> */}
-
-                  <SelectFormGroup label='Especialidad' eRef={specialtyRef} required multiple>
-                    {
-                      specialties.map((specialty, i) => {
-                        return <option key={`specialty-${i}`} value={specialty.id}>{specialty.name}</option>
-                      })
-                    }
-                  </SelectFormGroup>
-
+                  </div>
                   <div className="col-sm-6 mb-2">
                     <label htmlFor="name" className="form-label">Nombres <b className="text-danger">*</b></label>
                     <input ref={nameRef} className="form-control" type="text" id="name" placeholder="Ingrese su nombre"
@@ -192,7 +172,7 @@ const Register = ({ PUBLIC_RSA_KEY, RECAPTCHA_SITE_KEY, token, terms = 'Terminos
             <div className="row mt-3">
               <div className="col-12 text-center">
                 <p className="text-muted">Ya tienes una cuenta? <Link href="/login"
-                  className="text-white ms-1"><b>Iniciar sesion</b></Link></p>
+                  className="text-dark ms-1"><b>Iniciar sesion</b></Link></p>
               </div>
             </div>
           </div>

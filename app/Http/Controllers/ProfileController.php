@@ -11,13 +11,11 @@ use SoDe\Extend\Crypto;
 use SoDe\Extend\Response;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Routing\ResponseFactory as RoutingResponseFactory;
-use SoDe\Extend\Text;
 
 class ProfileController extends BasicController
 {
 
   public $reactView = 'Profile';
-  public $model = User::class;
   
   public function thumbnail(Request $request, $uuid)
   {
@@ -57,16 +55,16 @@ class ProfileController extends BasicController
     try {
       $userId = Auth::user()->id;
       $userJpa = User::find($userId);
-      if (!$userJpa->uuid) {
-        $userJpa->uuid = Crypto::randomUUID();
+      if (!$userJpa->relative_id) {
+        $userJpa->relative_id = Crypto::randomUUID();
         $userJpa->save();
       }
 
       $thumbnail = $request->file('thumbnail');
       $full = $request->file('full');
 
-      $thumbnailPath = 'profile/thumbnail/' . $userJpa->uuid . '.img';
-      $fullPath = 'profile/' . $userJpa->uuid . '.img';
+      $thumbnailPath = 'profile/thumbnail/' . $userJpa->relative_id . '.img';
+      $fullPath = 'profile/' . $userJpa->relative_id . '.img';
 
       Storage::put($thumbnailPath, file_get_contents($thumbnail));
       Storage::put($fullPath, file_get_contents($full));
@@ -74,7 +72,7 @@ class ProfileController extends BasicController
       $response->status = 200;
       $response->message = 'Operacion correcta';
       $response->data = [
-        'uuid' => $userJpa->uuid
+        'relative_id' => $userJpa->relative_id
       ];
     } catch (\Throwable $th) {
       $response->status = 400;
@@ -87,15 +85,26 @@ class ProfileController extends BasicController
     }
   }
 
-  public function beforeSave(Request $request)
+  public function save(Request $request): HttpResponse|RoutingResponseFactory
   {
-    $body = $request->all();
+    $response = new Response();
+    try {
 
-    if (isset($body['video'])) {
-      $body['video'] = Text::getYTVideoId($body['video']);
+      $body = $request->all();
+
+      $jpa = User::find(Auth::user()->id);
+      $jpa->update($body);
+
+      $response->status = 200;
+      $response->message = 'Operacion correcta';
+    } catch (\Throwable $th) {
+      $response->status = 400;
+      $response->message = $th->getMessage();
+    } finally {
+      return response(
+        $response->toArray(),
+        $response->status
+      );
     }
-
-    $body['id'] = Auth::user()->id;
-    return $body;
   }
 }

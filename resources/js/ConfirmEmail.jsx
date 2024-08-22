@@ -1,8 +1,9 @@
 import { createRoot } from 'react-dom/client'
-import React from 'react'
+import React, { useRef, useState } from 'react'
+import JSEncrypt from 'jsencrypt'
 import CreateReactScript from './Utils/CreateReactScript'
+import AuthRest from './actions/AuthRest'
 import { Link } from '@inertiajs/react'
-import logo from './Svg/logo.svg'
 
 const ConfirmEmail = ({ email }) => {
 
@@ -16,9 +17,9 @@ const ConfirmEmail = ({ email }) => {
             <div className="col-md-8 col-lg-6 col-xl-4">
               <div className="text-center">
                 <Link href="/">
-                  <img src={logo} alt="" className="mx-auto" style={{ height: '40px' }} />
+                  <img src="/assets/img/logo-dark.svg" alt="" height="22" className="mx-auto" style={{ height: '22px' }} />
                 </Link>
-                <p className="text-muted mt-2 mb-4">Bienvenido a Net Coaching</p>
+                <p className="text-muted mt-2 mb-4">Atalaya by Mundo Web</p>
               </div>
               <div className="card text-center">
                 <div className="card-body p-4">

@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import Footer from './Footer'
-import Menu from './Menu'
-import NavBar from './NavBar'
 import RigthBar from './RightBar'
+import NavBar from './NavBar'
+import Menu from './Menu'
+import Footer from './Footer'
+import WhatsAppModal from './modals/WhatsAppModal'
 
 moment.tz.setDefault('UTC');
 

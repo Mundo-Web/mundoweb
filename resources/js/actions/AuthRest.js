@@ -16,7 +16,7 @@ class AuthRest {
         body: 'Se inicio sesion correctamente'
       })
 
-      return result
+      return true
     } catch (error) {
       Notify.add({
         icon: '/assets/img/logo-login.svg',

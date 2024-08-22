@@ -11,6 +11,7 @@ use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Routing\ResponseFactory;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use SoDe\Extend\JSON;
 use SoDe\Extend\Response;
 
 class BasicController extends Controller
@@ -20,29 +21,28 @@ class BasicController extends Controller
   public $reactView = 'Home';
   public $reactRootView = 'admin';
 
+
   public function setPaginationInstance(string $model)
   {
     return $model::select();
   }
 
-  public function setReactViewProperties(Request $request)
+  public function setReactViewProperties()
   {
     return [];
   }
 
-  public function reactView(Request $request)
+  public function reactView()
   {
     $properties = [
       'session' => Auth::user(),
-      'global' => [
-        'PUBLIC_RSA_KEY' => Controller::$PUBLIC_RSA_KEY,
-        'APP_NAME' => env('APP_NAME'),
-        'APP_URL' => env('APP_URL'),
-        'APP_DOMAIN' => env('APP_DOMAIN'),
-        'APP_PROTOCOL' => env('APP_PROTOCOL', 'https'),
-      ],
+      'permissions' => Auth::user()->getAllPermissions(),
+      'PUBLIC_RSA_KEY' => Controller::$PUBLIC_RSA_KEY,
+      'APP_URL' => env('APP_URL'),
+      'APP_DOMAIN' => env('APP_DOMAIN'),
+      'APP_PROTOCOL' => env('APP_PROTOCOL', 'https'),
     ];
-    foreach ($this->setReactViewProperties($request) as $key => $value) {
+    foreach ($this->setReactViewProperties() as $key => $value) {
       $properties[$key] = $value;
     }
     return Inertia::render($this->reactView, $properties)->rootView($this->reactRootView);
@@ -64,9 +64,9 @@ class BasicController extends Controller
           ->groupBy($selector);
       }
 
-      // if (!Auth::user()->can('general.root')) {
-      //   $instance->whereNotNull('status');
-      // }
+      if (!Auth::user()->can('general.root')) {
+        $instance->whereNotNull('status');
+      }
 
       if ($request->filter) {
         $instance->where(function ($query) use ($request) {

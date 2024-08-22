@@ -24,22 +24,14 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'uuid',
         'name',
         'lastname',
         'email',
-        'email_verified_at',
         'password',
-        'dni',
-        'phone',
-        'video',
-        'title',
-        'country',
-        'city',
-        'address',
-        'summary',
-        'description',
-        'status',
+        'relative_id',
+        'person_id',
+        'email_verified_at',
+        'birthdate'
     ];
 
     /**
@@ -75,10 +67,5 @@ class User extends Authenticatable
     public function person()
     {
         return $this->belongsTo(Person::class, 'person_id');
-    }
-
-    public function getRole()
-    {
-        return $this->getRoleNames()[0];
     }
 }

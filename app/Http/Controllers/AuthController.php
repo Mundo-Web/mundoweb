@@ -9,7 +9,6 @@ use App\Models\ModelHasRoles;
 use App\Models\User;
 use App\Models\Person;
 use App\Models\PreUser;
-use App\Models\Specialty;
 use App\Providers\RouteServiceProvider;
 use Exception;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -21,55 +20,38 @@ use Inertia\Inertia;
 use SoDe\Extend\Crypto;
 use SoDe\Extend\Response;
 use SoDe\Extend\Trace;
-use Spatie\Permission\Models\Role;
 
 class AuthController extends Controller
 {
 
   public function loginView(Request $request, string $confirmation = null)
   {
-    if (Auth::check()) {
-      switch (Auth::user()->getRole()) {
-        case 'Admin':
-          return redirect('/admin/home');
-          break;
-        case 'Coach':
-          return redirect('/coach/home');
-          break;
-        case 'Coaching':
-          return redirect('/coaching/home');
-          break;
-
-        default:
-          Auth::guard('web')->logout();
-          $request->session()->invalidate();
-          $request->session()->regenerateToken();
-          return redirect('/login');
-          break;
-      }
-    };
+    if (Auth::check()) return redirect('/home');
 
     if ($confirmation) {
       try {
         //code...
         $preUserJpa = PreUser::select()
+          ->with('person')
           ->where('confirmation_token', $confirmation)
           ->first();
         if (!$preUserJpa) return redirect('/login');
 
-        $roleJpa = Role::where('relative_id', $preUserJpa->role)->first();
-
-        User::create([
-          'uuid' => Crypto::randomUUID(),
-          'name' => $preUserJpa->name,
-          'lastname' => $preUserJpa->lastname,
-          'email' => $preUserJpa->email,
-          'email_verified_at' => Trace::getDate('mysql'),
-          'password' => $preUserJpa->password,
-          'birthdate' => $preUserJpa->birthdate,
-        ])->assignRole($roleJpa->name);
-        $message = 'La confirmacion se ha realizado con exito';
-
+        $userJpa = User::where('person_id', $preUserJpa->person_id)->exists();
+        if ($userJpa) $message = 'Este correo ya ha sido verificado anteriormente.';
+        else {
+          User::create([
+            'name' => explode(' ', $preUserJpa->person->name)[0],
+            'lastname' => explode(' ', $preUserJpa->person->lastname)[0],
+            'email' => $preUserJpa->email,
+            'email_verified_at' => Trace::getDate('mysql'),
+            'password' => $preUserJpa->password,
+            'person_id' => $preUserJpa->person_id,
+            'birthdate' => $preUserJpa->birthdate,
+            'relative_id' => Crypto::randomUUID()
+          ])->assignRole('Admin');
+          $message = 'La confirmacion se ha realizado con exito';
+        }
         $preUserJpa->delete();
         return redirect('/login?message=' . $message);
       } catch (\Throwable $th) {
@@ -89,16 +71,15 @@ class AuthController extends Controller
   {
     if (Auth::check()) return redirect('/home');
 
-    $roles = Role::where('public', true)->get();
-    $specialties = Specialty::all();
+    // return view('admin')
+    // ->with('PUBLIC_RSA_KEY', Controller::$PUBLIC_RSA_KEY)
+    // ...
 
     return Inertia::render('Register', [
-      'roles' => $roles,
       'APP_PROTOCOL' => env('APP_PROTOCOL', 'https'),
       'PUBLIC_RSA_KEY' => Controller::$PUBLIC_RSA_KEY,
       'RECAPTCHA_SITE_KEY' => env('RECAPTCHA_SITE_KEY'),
-      'terms' => Constant::value('terms'),
-      'specialties' => $specialties
+      'terms' => Constant::value('terms')
     ])->rootView('auth');
   }
 
@@ -119,7 +100,8 @@ class AuthController extends Controller
    */
   public function login(Request $request): HttpResponse | ResponseFactory | RedirectResponse
   {
-    $response = Response::simpleTryCatch(function (Response $response) use ($request) {
+    $response = new Response();
+    try {
       $email = $request->email;
       $password = $request->password;
 
@@ -131,8 +113,22 @@ class AuthController extends Controller
       }
 
       $request->session()->regenerate();
-    });
-    return response($response->toArray(), $response->status);
+
+      $response->status = 200;
+      $response->message = 'Autenticacion correcta';
+    } catch (\Throwable $th) {
+      $response->status = 400;
+      $response->message = $th->getMessage();
+    } finally {
+      return response(
+        $response->toArray(),
+        $response->status
+      );
+    }
+
+    $request->session()->regenerate();
+
+    return redirect()->intended(RouteServiceProvider::HOME);
   }
 
   public function signup(Request $request): HttpResponse | ResponseFactory | RedirectResponse
@@ -140,6 +136,8 @@ class AuthController extends Controller
     $response = new Response();
     try {
       $request->validate([
+        'document_type' => 'required|string|max:3|min:2',
+        'document_number' => 'required|string|max:9|min:8',
         'name' => 'required|string|max:255',
         'lastname' => 'required|string|max:255',
         'email' => 'required|string|email|max:255|unique:users',
@@ -156,18 +154,30 @@ class AuthController extends Controller
 
       if (!ReCaptchaService::verify($request->captcha)) throw new Exception('Captcha invalido. Seguro que no eres un robot?');
 
-      $roleExists = Role::where('relative_id', $body['role'])->exists();
+      $personJpa = Person::select()
+        ->where('document_type', $body['document_type'])
+        ->where('document_number', $body['document_number'])
+        ->first();
 
-      if (!$roleExists) throw new Exception('El rol que ingresaste no existe, que intentas hacer?');
+      if (!$personJpa) {
+        $personJpa = Person::create([
+          'document_type' => $body['document_type'],
+          'document_number' => $body['document_number'],
+          'name' => $body['name'],
+          'lastname' => $body['lastname'],
+        ]);
+      }
+
+      $existsUser = User::where('person_id', $personJpa->id)->exists();
+
+      if ($existsUser) throw new Exception('Ya existe un usuario registrado con ese documento');
 
       $preUserJpa = PreUser::updateOrCreate([
         'email' => $body['email']
       ], [
-        'name' => $body['name'],
-        'lastname' => $body['lastname'],
         'email' => $body['email'],
-        'role' => $body['role'],
         'password' => Controller::decode($body['password']),
+        'person_id' => $personJpa->id,
         'confirmation_token' => Crypto::randomUUID(),
         'token' => Crypto::randomUUID(),
       ]);
@@ -176,7 +186,7 @@ class AuthController extends Controller
       $content = str_replace('{URL_CONFIRM}', env('APP_URL') . '/confirmation/' . $preUserJpa->confirmation_token, $content);
 
       $mailer = EmailConfig::config();
-      $mailer->Subject = 'Confirmacion - ' . env('APP_NAME');
+      $mailer->Subject = 'Confirmacion - Atalaya';
       $mailer->Body = $content;
       $mailer->addAddress($preUserJpa->email);
       $mailer->isHTML(true);
